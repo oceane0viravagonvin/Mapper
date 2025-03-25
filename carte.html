@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte Interactive</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            background: linear-gradient(135deg, #1e1e2f, #3a3a55);
+            color: #fff;
+        }
+        header {
+            background: #000000;
+            color: white;
+            padding: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background: #111;
+            padding: 15px;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            border-radius: 8px;
+            transition: 0.3s ease;
+            background: #222;
+        }
+        nav a:hover {
+            background: #5d697c;
+            transform: scale(1.1);
+        }
+        #map {
+            height: 80vh;
+            width: 90%;
+            margin: 20px auto;
+            border-radius: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
+            transition: 0.3s ease;
+        }
+        .search-container {
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .search-container input {
+            padding: 12px;
+            font-size: 18px;
+            width: 280px;
+            border: none;
+            border-radius: 8px 0 0 8px;
+            outline: none;
+        }
+        .search-container button {
+            padding: 12px 16px;
+            font-size: 18px;
+            border: none;
+            background: #0d6efd;
+            color: white;
+            cursor: pointer;
+            border-radius: 0 8px 8px 0;
+            transition: 0.3s;
+        }
+        .search-container button:hover {
+            background: #0056b3;
+        }
+        .leaflet-popup-content {
+    font-size: 14px;  /* Réduit la taille du texte */
+    max-width: 200px; /* Réduit la largeur du popup */
+    max-height: 200px; /* Réduit la hauteur */
+    overflow: hidden;
+}
+
+    </style>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <header>Carte Interactive</header>
+    <nav>
+        <a href="index.html">Accueil</a>
+        <a href="contact.html">Contact</a>
+    </nav>
+    <div class="search-container">
+        <input type="text" id="search-box" placeholder="Rechercher un lieu...">
+        <button onclick="searchLocation()"><i class="fas fa-search"></i></button>
+    </div>
+    <div id="map"></div>
+    
+    <script>
+        var map = L.map('map').setView([46.603354, 1.888334], 6);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        
+        function searchLocation() {
+    var query = document.getElementById("search-box").value;
+    if (query) {
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    var latlng = [data[0].lat, data[0].lon];
+                    map.setView(latlng, 12);
+                    L.marker(latlng).addTo(map).bindPopup(query).openPopup();
+                } else {
+                    alert("Lieu non trouvé.");
+                }
+            })
+            .catch(error => console.error("Erreur lors de la recherche :", error));
+    }
+}
+
+        function onMapClick(e) {
+            var popupContent = `<b>Ajouter un commentaire :</b><br>
+                <select id='category'>
+                    <option value='Restaurant'>Restaurant</option>
+                    <option value='Monument'>Monument</option>
+                    <option value='Magasin'>Magasin</option>
+                    <option value='Autre'>Autre</option>
+                </select><br>
+                <textarea id='comment-input' rows='3' style='width:100%;'></textarea><br>
+                <button onclick='saveComment("${e.latlng.lat}", "${e.latlng.lng}")'>Enregistrer</button>`;
+            
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(popupContent)
+                .openOn(map);
+        }
+
+        function saveComment(lat, lng) {
+            var category = document.getElementById('category').value;
+            var comment = document.getElementById('comment-input').value;
+            if (comment) {
+                alert(`Commentaire enregistré (${category}) pour (${lat}, ${lng}) : ${comment}`);
+            } else {
+                alert("Veuillez écrire un commentaire avant d'enregistrer.");
+            }
+        }
+
+        map.on('click', onMapClick);
+
+        function requestGeolocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        var userLocation = [position.coords.latitude, position.coords.longitude];
+                        L.marker(userLocation, { icon: L.icon({
+                            iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+                            iconSize: [30, 30],
+                        }) }).addTo(map)
+                        .bindPopup("Vous êtes ici").openPopup();
+                        map.setView(userLocation, 12);
+                    },
+                    function(error) {
+                        alert("Géolocalisation refusée ou non disponible.");
+                    }
+                );
+            } else {
+                alert("La géolocalisation n'est pas supportée par votre navigateur.");
+            }
+        }
+
+        if (confirm("Voulez-vous activer la géolocalisation ?")) {
+            requestGeolocation();
+        }
+
+        function getTouristSpots(city, lat, lon) {
+    // Construire la requête Overpass
+    const overpassQuery = `
+        [out:json];
+        (
+            node["tourism"="attraction"](around:5000, ${lat}, ${lon});
+            node["historic"](around:5000, ${lat}, ${lon});
+            node["amenity"="museum"](around:5000, ${lat}, ${lon});
+            node["leisure"="park"](around:5000, ${lat}, ${lon});
+        );
+        out body;
+    `;
+
+    const overpassURL = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(overpassQuery);
+
+    // Effectuer la requête fetch
+    fetch(overpassURL)
+        .then(response => response.json())
+        .then(data => {
+            let places = data.elements;
+            let popupContent = `<h3>${city}</h3><ul>`;
+            let listContent = `<h2>Lieux touristiques de ${city}</h2><ul>`;
+
+            if (places.length === 0) {
+                listContent = "<p>Aucun lieu touristique trouvé.</p>";
+            } else {
+                places.forEach(place => {
+                    if (place.tags && place.tags.name) {
+                        let placeName = place.tags.name;
+                        let placeLat = place.lat;
+                        let placeLon = place.lon;
+
+                        popupContent += `<li>${placeName}</li>`;
+                        listContent += `<li>${placeName}</li>`;
+
+                        // Ajouter un marqueur sur la carte pour chaque lieu
+                        L.marker([placeLat, placeLon])
+                            .addTo(map)
+                            .bindPopup(`<b>${placeName}</b>`);
+                    }
+                });
+                popupContent += `</ul>`;
+                listContent += `</ul>`;
+            }
+
+            // Afficher les lieux dans le popup de la carte
+            L.popup()
+                .setLatLng([lat, lon])
+                .setContent(popupContent)
+                .openOn(map);
+
+            // Mettre à jour la liste sous la carte
+            document.getElementById("tourist-list").innerHTML = listContent;
+        })
+        .catch(error => {
+            console.error("Erreur lors de la récupération des lieux touristiques :", error);
+        });
+}
+
+const cities = {
+    "Paris": [48.8566, 2.3522],
+    "Lyon": [45.764, 4.8357]
+};
+
+Object.keys(cities).forEach(city => {
+    const latlng = cities[city];
+    L.marker(latlng)
+        .addTo(map)
+        .bindPopup(`<b>${city}</b>`)
+        .on('click', function () {
+            getTouristSpots(city, latlng[0], latlng[1]);
+        });
+});
+
+    </script>
+
+<div id="tourist-list" style="margin: 20px; padding: 15px; background: white; color: black; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+    <h2>Sélectionnez une ville pour voir les lieux touristiques</h2>
+</div>
+
+</body>
+</html>
